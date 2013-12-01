@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <string name="app_name">SMSLocator</string>
+    <string name="app_name">SMS Locator</string>
     <string name="action_settings">Settings</string>
     <string name="hello_world">Hello world!</string>
+    <string name="main_switch_upload">Upload incoming SMS</string>
 
 </resources>

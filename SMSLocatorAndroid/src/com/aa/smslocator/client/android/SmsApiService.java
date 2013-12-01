@@ -14,12 +14,13 @@ import com.google.api.client.util.DateTime;
 import android.app.IntentService;
 import android.content.Intent;
 import android.os.AsyncTask;
+import android.os.Bundle;
 import android.util.Log;
 
 public class SmsApiService extends IntentService {
-	public static final String SERVICE_NAME = "SmsApiConnectorService",
-							   SMS_INTENT_ACTION = "com.aa.smslocator.client.android.SMS_TO_PROCESS";
+	public static final String SERVICE_NAME = "SmsApiConnectorService";
 	private final SmsLocator smsApi;
+	private Preferences prefs;
 	
 	public SmsApiService() {
 		super(SERVICE_NAME);
@@ -29,9 +30,15 @@ public class SmsApiService extends IntentService {
 
 	@Override
 	protected void onHandleIntent(Intent intent) {
-		if(!SMS_INTENT_ACTION.equals(intent.getAction())) return;
+		Log.d(SERVICE_NAME, "Received intent.");
+		prefs = new Preferences(this);
+		if(!prefs.isActiveUploadSms()) return;
+				
+		final Bundle intentExtras = intent.getExtras();
+		if(intentExtras == null) return;
+		else if(!intentExtras.containsKey(SmsReceiver.SMS_RECEIVED_INT_EXTRA)) return;
 		
-		final Object[] pdus = (Object[]) intent.getExtras().get(SmsReceiver.SMS_RECEIVED_INT_EXTRA);
+		final Object[] pdus = (Object[]) intentExtras.get(SmsReceiver.SMS_RECEIVED_INT_EXTRA);
 		SmsMessage[] smsMessages = extractSmsMessages(pdus);
 		
 		final Location location = determineLocation();
@@ -45,7 +52,7 @@ public class SmsApiService extends IntentService {
 		}
 		saveSms(smsResources);
 	}
-	
+
 	private void saveSms(SmsResource... smsRes) {
 		AsyncTask<SmsResource, Void, ApiResponse> asyncSave = 
 			new AsyncTask<SmsResource, Void, ApiResponse>() {
@@ -67,7 +74,7 @@ public class SmsApiService extends IntentService {
 			asyncSave.execute(sms);
 		}
 	}
-	
+
 	private SmsMessage[] extractSmsMessages(Object[] pdus) {
 		final android.telephony.SmsMessage[] rawMessages = new android.telephony.SmsMessage[pdus.length];
 		final SmsMessage[] smsMessages = new SmsMessage[pdus.length];
@@ -81,6 +88,7 @@ public class SmsApiService extends IntentService {
 						 
 			smsMessages[i] = new SmsMessage().setMessage(messageContent)
 											 .setSource(source)
+											 .setReceiver(obtainSmsReceiver())
 											 .setTime(time);
 		}
 		return smsMessages;
@@ -97,5 +105,9 @@ public class SmsApiService extends IntentService {
 											.setLongitude(rawLocation.getLongitude())
 											.setTime(new DateTime(rawLocation.getTime()));
 		return location;
+	}
+
+	private String obtainSmsReceiver() {
+		return prefs.getPhoneNumber();
 	}
 }
