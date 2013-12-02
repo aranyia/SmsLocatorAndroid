@@ -33,15 +33,14 @@ public class MainActivity extends Activity {
 		});
 		
 		final EditText editPhoneNum = (EditText) findViewById(R.id.editTextPhoneNumber);
+		editPhoneNum.setText(prefPhoneNumber);
 		
 		final Button btnSetPoneNum = (Button) findViewById(R.id.btnSetPhoneNumber);
 		btnSetPoneNum.setOnClickListener(new OnClickListener() {
 			@Override
 			public void onClick(View view) {
 				final String editPhoneNumber = editPhoneNum.getEditableText().toString();
-				if(editPhoneNumber != prefPhoneNumber) {
-					prefs.setPhoneNumber(editPhoneNumber);
-				}
+				prefs.setPhoneNumber(editPhoneNumber);
 			}
 		});
 	}
