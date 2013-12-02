@@ -2,8 +2,6 @@ package com.aa.smslocator.client.android;
 
 import android.os.Bundle;
 import android.app.Activity;
-import android.telephony.TelephonyManager;
-import android.util.Log;
 import android.view.Menu;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -46,20 +44,10 @@ public class MainActivity extends Activity {
 				}
 			}
 		});
-		
-		final TelephonyManager telManager = (TelephonyManager) getSystemService(TELEPHONY_SERVICE);
-		if(telManager == null) Log.w("Activity", "Couldn't obtain Telephony Manager.");
-		
-		if(telManager != null && prefPhoneNumber == null) {
-			editPhoneNum.setText(telManager.getLine1Number());
-			Log.i("Activity", "Telephony Manager line number is: "+ telManager.getLine1Number());
-		}
-		else editPhoneNum.setText(prefPhoneNumber);
 	}
-
+	
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
-		// Inflate the menu; this adds items to the action bar if it is present.
 		getMenuInflater().inflate(R.menu.main, menu);
 		return true;
 	}

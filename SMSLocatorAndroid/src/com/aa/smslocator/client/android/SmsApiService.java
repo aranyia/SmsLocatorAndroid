@@ -1,40 +1,68 @@
 package com.aa.smslocator.client.android;
 
 import java.io.IOException;
+import java.util.ArrayDeque;
+import java.util.Queue;
 
 import com.appspot.smslocator.smsLocator.SmsLocator;
 import com.appspot.smslocator.smsLocator.model.ApiResponse;
 import com.appspot.smslocator.smsLocator.model.Location;
 import com.appspot.smslocator.smsLocator.model.SmsMessage;
 import com.appspot.smslocator.smsLocator.model.SmsResource;
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.GooglePlayServicesClient;
+import com.google.android.gms.location.LocationClient;
 import com.google.api.client.extensions.android.http.AndroidHttp;
 import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.client.util.DateTime;
 
-import android.app.IntentService;
+import android.app.Service;
 import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.util.Log;
 
-public class SmsApiService extends IntentService {
+public class SmsApiService extends Service implements GooglePlayServicesClient.ConnectionCallbacks,
+													  GooglePlayServicesClient.OnConnectionFailedListener {
 	public static final String SERVICE_NAME = "SmsApiConnectorService";
 	private final SmsLocator smsApi;
+	private final Queue<SmsResource> smsQueue = new ArrayDeque<SmsResource>();
 	private Preferences prefs;
+	private LocationClient locationClient;
 	
 	public SmsApiService() {
-		super(SERVICE_NAME);
+		super();
 		smsApi = new SmsLocator.Builder(AndroidHttp.newCompatibleTransport(),
 										new GsonFactory(), null).build();
 	}
 
 	@Override
-	protected void onHandleIntent(Intent intent) {
-		Log.d(SERVICE_NAME, "Received intent.");
+	public void onCreate() {
+		super.onCreate();
 		prefs = new Preferences(this);
-		if(!prefs.isActiveUploadSms()) return;
-				
-		final Bundle intentExtras = intent.getExtras();
+		
+		locationClient = new LocationClient(this, this, this);
+		locationClient.connect();
+	}
+	
+	@Override
+	public void onDestroy() {
+		super.onDestroy();
+		locationClient.disconnect();
+	}
+
+	@Override
+	public int onStartCommand(Intent intent, int flags, int startId) {
+		Log.d(SERVICE_NAME, "Received start command intent.");
+		if(!prefs.isActiveUploadSms()) stopSelf();
+		
+		addSmsToProcessQueue(intent.getExtras());
+		
+		return START_STICKY;
+	}
+
+	private void addSmsToProcessQueue(Bundle intentExtras) {
 		if(intentExtras == null) return;
 		else if(!intentExtras.containsKey(SmsReceiver.SMS_RECEIVED_INT_EXTRA)) return;
 		
@@ -43,14 +71,22 @@ public class SmsApiService extends IntentService {
 		
 		final Location location = determineLocation();
 		
-		SmsResource[] smsResources = new SmsResource[smsMessages.length];
 		for(int i = 0; i < smsMessages.length; i++) {
 			final SmsResource smsRes = new SmsResource()
 											.setMessage(smsMessages[i])
 											.setLocation(location);
-			smsResources[i] = smsRes;
+			smsQueue.add(smsRes);
+		}			
+	}
+
+	private void processSmsQueueWithLocation(Location location) {
+		while(!smsQueue.isEmpty()) {
+			final SmsResource smsRes = smsQueue.poll();
+			smsRes.setLocation(location);
+			
+			saveSms(smsRes);
 		}
-		saveSms(smsResources);
+		stopSelf();
 	}
 
 	private void saveSms(SmsResource... smsRes) {
@@ -88,15 +124,16 @@ public class SmsApiService extends IntentService {
 						 
 			smsMessages[i] = new SmsMessage().setMessage(messageContent)
 											 .setSource(source)
-											 .setReceiver(obtainSmsReceiver())
+											 .setReceiver(prefs.getPhoneNumber())
 											 .setTime(time);
 		}
 		return smsMessages;
 	}
 
 	private Location determineLocation() {
-		final LocationListener locationListener = new LocationListener(this);
-		final android.location.Location rawLocation = locationListener.getLocation();
+		if(!locationClient.isConnected()) return null;
+		
+		final android.location.Location rawLocation = locationClient.getLastLocation();
 		if(rawLocation == null) return null;
 		
 		final Location location = new Location()
@@ -107,7 +144,25 @@ public class SmsApiService extends IntentService {
 		return location;
 	}
 
-	private String obtainSmsReceiver() {
-		return prefs.getPhoneNumber();
+	@Override
+	public void onConnected(Bundle bundle) {
+		Log.d(SERVICE_NAME, "Connected to GooglePlayServices.");
+		processSmsQueueWithLocation(determineLocation());
+	}
+
+	@Override
+	public void onDisconnected() {
+		Log.d(SERVICE_NAME, "Disconnected from GooglePlayServices.");
+	}
+
+	@Override
+	public void onConnectionFailed(ConnectionResult result) {
+		Log.d(SERVICE_NAME, "Failed to connected to GooglePlayServices.");
+		processSmsQueueWithLocation(null);
+	}
+
+	@Override
+	public IBinder onBind(Intent intent) {
+		return null;
 	}
 }

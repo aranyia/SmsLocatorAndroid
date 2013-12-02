@@ -57,11 +57,14 @@ int drawable ic_plusone_medium_off_client 0x7f020019
 int drawable ic_plusone_small_off_client 0x7f02001a
 int drawable ic_plusone_standard_off_client 0x7f02001b
 int drawable ic_plusone_tall_off_client 0x7f02001c
-int id action_settings 0x7f050005
+int id action_settings 0x7f050008
+int id btnSetPhoneNumber 0x7f050007
+int id editTextPhoneNumber 0x7f050006
 int id hybrid 0x7f050004
 int id none 0x7f050000
 int id normal 0x7f050001
 int id satellite 0x7f050002
+int id switchUploadSms 0x7f050005
 int id terrain 0x7f050003
 int integer google_play_services_version 0x7f070000
 int layout activity_main 0x7f030000
@@ -95,6 +98,7 @@ int string common_google_play_services_update_title 0x7f060007
 int string common_signin_button_text 0x7f060012
 int string common_signin_button_text_long 0x7f060013
 int string hello_world 0x7f06001c
+int string main_switch_upload 0x7f06001d
 int style AppBaseTheme 0x7f090000
 int style AppTheme 0x7f090001
 int[] styleable AdsAttrs { 0x7f010000, 0x7f010001 }
